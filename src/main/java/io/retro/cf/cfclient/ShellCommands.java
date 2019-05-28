@@ -1,14 +1,20 @@
 package io.retro.cf.cfclient;
 
+import org.cloudfoundry.client.v3.applications.Application;
+import org.cloudfoundry.client.v3.spaces.Space;
 import org.cloudfoundry.operations.CloudFoundryOperations;
+import org.cloudfoundry.operations.applications.ApplicationSummary;
 import org.cloudfoundry.operations.applications.PushApplicationRequest;
 import org.cloudfoundry.operations.applications.SetEnvironmentVariableApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.organizations.OrganizationSummary;
+import org.cloudfoundry.operations.services.ServiceInstanceSummary;
+import org.cloudfoundry.operations.spaces.SpaceSummary;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.shell.standard.ShellComponent;
 import org.springframework.shell.standard.ShellMethod;
+import org.springframework.shell.standard.ShellMethodAvailability;
 import org.springframework.shell.standard.ShellOption;
 import reactor.core.publisher.Mono;
 
@@ -21,13 +27,13 @@ import java.util.UUID;
 
 @ShellComponent
 public class ShellCommands {
+
+    // CF operations API
     private CloudFoundryOperations cf;
+
+    // autowire operations instance
     public ShellCommands(@Autowired CloudFoundryOperations operations) {
         this.cf = operations;
-    }
-    @ShellMethod("list orgs")
-    public List<String> orgs() {
-        return cf.organizations().list().map(OrganizationSummary::getName).collectList().block();
     }
 
     /**
@@ -112,19 +118,33 @@ public class ShellCommands {
                         .name(tag + "-todos-edge").build())).block();
     }
 
-    Mono<Void> pushApplication(String name, Path application, Boolean noStart) {
-        return cf.applications()
-            .push(PushApplicationRequest.builder()
-                .noStart(noStart)
-                .memory(1024)
-                .name(name)
-                .path(application)
-                .build());
+    @ShellMethod("list orgs")
+    public List<String> orgs() {
+        return cf.organizations().list().map(OrganizationSummary::getName).collectList().block();
     }
 
-    Mono<Void> startApplication(String name) {
+    @ShellMethod("list spaces")
+    public List<String> spaces() {
+        return cf.spaces().list().map(SpaceSummary::getName).collectList().block();
+    }
+
+    @ShellMethod("list apps")
+    public List<String> apps() {
+        return cf.applications().list().map(ApplicationSummary::getName).collectList().block();
+    }
+
+    @ShellMethod("list services")
+    public List<String> services() {
+        return cf.services().listInstances().map(ServiceInstanceSummary::getName).collectList().block();
+    }
+
+    private Mono<Void> pushApplication(String name, Path application, Boolean noStart) {
         return cf.applications()
-            .start(StartApplicationRequest.builder()
-                .name(name).build());
+                .push(PushApplicationRequest.builder()
+                        .noStart(noStart)
+                        .memory(1024)
+                        .name(name)
+                        .path(application)
+                        .build());
     }
 }
