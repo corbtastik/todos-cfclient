@@ -1,15 +1,26 @@
+DEV_ROOT=/Users/corbett/Desktop/shop
+
 clean:
-	rm ./src/main/resources/*.jar
+	rm ${DEV_ROOT}/jars/*.jar
+
+jarfolder:
+	mkdir -p ${DEV_ROOT}/jars
+
+listjars:
+	ls -lrt ${DEV_ROOT}/jars
 
 buildjars:
-	~/dev/show/todos-webui/mvnw clean package -DskipTests
-	~/dev/github/todos-apps/todos-api/mvnw clean package -DskipTests
-	~/dev/github/todos-apps/todos-edge/mvnw clean package -DskipTests
+	pushd ${DEV_ROOT}/todos-webui && ./mvnw clean package -DskipTests && popd
+	pushd ${DEV_ROOT}/todos-api   && ./mvnw clean package -DskipTests && popd
+	pushd ${DEV_ROOT}/todos-edge  && ./mvnw clean package -DskipTests && popd
 
-copyjars:
-	cp ~/dev/show/todos-webui/target/todos-webui-1.0.0.SNAP.jar ./src/main/resources/
-	cp ~/dev/github/todos-apps/todos-api/target/todos-api-1.0.0.SNAP.jar ./src/main/resources/
-	cp ~/dev/github/todos-apps/todos-edge/target/todos-edge-1.0.0.SNAP.jar ./src/main/resources/
+copyjars: jarfolder
+	cp ${DEV_ROOT}/todos-webui/target/todos-webui-1.0.0.SNAP.jar ${DEV_ROOT}/jars
+	cp ${DEV_ROOT}/todos-api/target/todos-api-1.0.0.SNAP.jar     ${DEV_ROOT}/jars
+	cp ${DEV_ROOT}/todos-edge/target/todos-edge-1.0.0.SNAP.jar   ${DEV_ROOT}/jars
+
+build:
+	./mvnw clean package -DskipTests
 	
 run:
-	java -jar ./target/cf-client-0.0.1-SNAPSHOT.jar
+	java -jar ./target/todos-cfclient-1.0.0.SNAP.jar --spring.profiles.active=pws

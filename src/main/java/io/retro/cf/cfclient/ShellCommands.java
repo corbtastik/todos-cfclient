@@ -1,7 +1,5 @@
 package io.retro.cf.cfclient;
 
-import org.cloudfoundry.client.v3.applications.Application;
-import org.cloudfoundry.client.v3.spaces.Space;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.ApplicationSummary;
 import org.cloudfoundry.operations.applications.PushApplicationRequest;
@@ -11,23 +9,26 @@ import org.cloudfoundry.operations.organizations.OrganizationSummary;
 import org.cloudfoundry.operations.services.ServiceInstanceSummary;
 import org.cloudfoundry.operations.spaces.SpaceSummary;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.shell.standard.ShellComponent;
 import org.springframework.shell.standard.ShellMethod;
-import org.springframework.shell.standard.ShellMethodAvailability;
 import org.springframework.shell.standard.ShellOption;
 import reactor.core.publisher.Mono;
 
-import java.io.IOException;
 import java.nio.file.Path;
-import java.util.HashMap;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
+@Configuration
 @ShellComponent
 public class ShellCommands {
-
+    // local folder with 3 sample jars
+    @Value("${jars.folder}") String jarsFolder;
+    // cf domain
+    @Value("${cf.domain}") String cfDomain;
     // CF operations API
     private CloudFoundryOperations cf;
 
@@ -37,22 +38,18 @@ public class ShellCommands {
     }
 
     /**
-     * Programmatically push 3 applications to PAS
-     * @throws IOException
+     * Programmatically push 3 applications to PAS non SCS version
      */
-    @ShellMethod("push")
-    public void push(@ShellOption(help = "tag prefix for app hostname", defaultValue = "") String tag) throws IOException {
+    @ShellMethod("cf push")
+    public void push(@ShellOption(help = "tag prefix for app hostname", defaultValue = "") String tag,
+        @ShellOption(help = "version (ex: 1.0.0.RELEASE, 1.0.0.SNAP", defaultValue = "1.0.0.SNAP") String version) {
         if(tag.length() < 1) {
             tag = UUID.randomUUID().toString().substring(0,8);
         }
-        Map<String, String> envVars = new HashMap<>();
-        envVars.put("TODOS_UI_ENDPOINT", "http://" + tag + "-todos-webui.apps.retro.io");
-        envVars.put("TODOS_API_ENDPOINT", "http://" + tag + "-todos-api.apps.retro.io");
-        envVars.put("EUREKA_CLIENT_ENABLED", "false");
-        envVars.put("SPRING_CLOUD_CONFIG_ENABLED", "false");
 
+        // push api
         pushApplication(tag + "-todos-api",
-            new ClassPathResource("todos-api-1.0.0.SNAP.jar").getFile().toPath(), true)
+            Paths.get(jarsFolder, "todos-api-" + version + ".jar").toFile().toPath(), true)
                 .then(this.cf.applications()
                     .setEnvironmentVariable(SetEnvironmentVariableApplicationRequest.builder()
                         .name(tag + "-todos-api")
@@ -68,9 +65,9 @@ public class ShellCommands {
                 .then(cf.applications()
                     .start(StartApplicationRequest.builder()
                         .name(tag + "-todos-api").build())).block();
-
+        // push webui
         pushApplication(tag + "-todos-webui",
-            new ClassPathResource("todos-webui-1.0.0.SNAP.jar").getFile().toPath(), true)
+            Paths.get(jarsFolder, "todos-webui-" + version + ".jar").toFile().toPath(), true)
                 .then(this.cf.applications()
                     .setEnvironmentVariable(SetEnvironmentVariableApplicationRequest.builder()
                         .name(tag + "-todos-webui")
@@ -86,9 +83,9 @@ public class ShellCommands {
                 .then(cf.applications()
                         .start(StartApplicationRequest.builder()
                             .name(tag + "-todos-webui").build())).block();
-
+        // push edge
         pushApplication(tag + "-todos-edge",
-            new ClassPathResource("todos-edge-1.0.0.SNAP.jar").getFile().toPath(), true)
+            Paths.get(jarsFolder, "todos-edge-" + version + ".jar").toFile().toPath(), true)
                 .then(this.cf.applications()
                     .setEnvironmentVariable(SetEnvironmentVariableApplicationRequest.builder()
                         .name(tag + "-todos-edge")
@@ -105,17 +102,49 @@ public class ShellCommands {
                     .setEnvironmentVariable(SetEnvironmentVariableApplicationRequest.builder()
                         .name(tag + "-todos-edge")
                         .variableName("TODOS_UI_ENDPOINT")
-                        .variableValue("http://" + tag + "-todos-webui.apps.retro.io")
+                        .variableValue("http://" + tag + "-todos-webui." + cfDomain)
                         .build()))
                 .then(this.cf.applications()
                     .setEnvironmentVariable(SetEnvironmentVariableApplicationRequest.builder()
                         .name(tag + "-todos-edge")
                         .variableName("TODOS_API_ENDPOINT")
-                        .variableValue("http://" + tag + "-todos-api.apps.retro.io")
+                        .variableValue("http://" + tag + "-todos-api." + cfDomain)
                         .build()))
                 .then(cf.applications()
                     .start(StartApplicationRequest.builder()
                         .name(tag + "-todos-edge").build())).block();
+    }
+
+    @ShellMethod("cf push with scs")
+    public void pushscs(@ShellOption(help = "tag prefix for app hostname", defaultValue = "") String tag,
+        @ShellOption(help = "version (ex: 1.0.0.RELEASE, 1.0.0.SNAP", defaultValue = "1.0.0.SNAP") String version) {
+        if(tag.length() < 1) {
+            tag = UUID.randomUUID().toString().substring(0,8);
+        }
+
+        pushApplication(tag + "-todos-api",
+            Paths.get(jarsFolder, "todos-api-" + version + ".jar").toFile().toPath(), true)
+            .then(cf.applications()
+                .start(StartApplicationRequest.builder()
+                    .name(tag + "-todos-api").build())).block();
+
+        pushApplication(tag + "-todos-webui",
+            Paths.get(jarsFolder, "todos-webui-" + version + ".jar").toFile().toPath(), true)
+            .then(cf.applications()
+                .start(StartApplicationRequest.builder()
+                    .name(tag + "-todos-webui").build())).block();
+
+        pushApplication(tag + "-todos-edge",
+            Paths.get(jarsFolder, "todos-edge-" + version + ".jar").toFile().toPath(), true)
+            .then(cf.applications()
+                .start(StartApplicationRequest.builder()
+                    .name(tag + "-todos-edge").build())).block();
+
+    }
+
+    @ShellMethod("list jars")
+    public List<String> jars() {
+        return Arrays.asList(Paths.get(jarsFolder).toFile().list());
     }
 
     @ShellMethod("list orgs")
@@ -140,11 +169,11 @@ public class ShellCommands {
 
     private Mono<Void> pushApplication(String name, Path application, Boolean noStart) {
         return cf.applications()
-                .push(PushApplicationRequest.builder()
-                        .noStart(noStart)
-                        .memory(1024)
-                        .name(name)
-                        .path(application)
-                        .build());
+            .push(PushApplicationRequest.builder()
+                .noStart(noStart)
+                .memory(1024)
+                .name(name)
+                .path(application)
+                .build());
     }
 }

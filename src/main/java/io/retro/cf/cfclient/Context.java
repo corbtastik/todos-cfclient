@@ -6,9 +6,7 @@ import org.cloudfoundry.reactor.ConnectionContext;
 import org.cloudfoundry.reactor.DefaultConnectionContext;
 import org.cloudfoundry.reactor.TokenProvider;
 import org.cloudfoundry.reactor.client.ReactorCloudFoundryClient;
-import org.cloudfoundry.reactor.doppler.ReactorDopplerClient;
 import org.cloudfoundry.reactor.tokenprovider.PasswordGrantTokenProvider;
-import org.cloudfoundry.uaa.UaaClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -46,9 +44,9 @@ public class Context {
 
     @Bean
     DefaultCloudFoundryOperations cloudFoundryOperations(
-            CloudFoundryClient cloudFoundryClient,
-            @Value("${cf.organization}") String organization,
-            @Value("${cf.space}") String space) {
+        CloudFoundryClient cloudFoundryClient,
+        @Value("${cf.organization}") String organization,
+        @Value("${cf.space}") String space) {
         return DefaultCloudFoundryOperations.builder()
             .cloudFoundryClient(cloudFoundryClient)
                 .organization(organization)

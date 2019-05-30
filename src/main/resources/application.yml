@@ -1,8 +1,11 @@
 cf:
   api: api.sys.retro.io
-  username: corbs
-  password: howdy
+  username: changeme
+  password: changeme
   organization: retro
   space: arcade
+  domain: apps.retro.io
   skipSslValidation: true
+jars:
+  folder: /Users/corbett/Desktop/shop/jars
 
