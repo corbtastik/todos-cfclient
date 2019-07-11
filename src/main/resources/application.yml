@@ -1,9 +1,9 @@
 jars:
-  folder: /Users/corbs/dev/github/todos-apps/jars
+  folder: /Users/corbs/dev/github/todos-apps/todos-cfclient/.apps/jars
 cf:
   api: api.sys.retro.io
   username: corbs
-  password: changeme
+  password: changeme-or-pass-cli-arg
   organization: retro
   space: arcade
   domain: apps.retro.io
